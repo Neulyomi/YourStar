@@ -527,6 +527,101 @@ class StellarEngine {
     this.stellarObjectGroup.add(container);
   }
 
+  /**
+   * [우주의 모든 별 360도 전면 활성화 모드: All Stars Galaxy Dome Mode]
+   * - 궤도선은 싹 제거 (orbitGroup.visible = false)
+   * - 모든 천체 사진을 3D 천구 좌표(R=380)에 콤팩트하고 세련된 크기(photoScale: 42.0)로 일제히 렌더링
+   * - 각 천체 터치 시 상세 정보 카드가 열리도록 인터랙션 바인딩
+   */
+  renderAllStellarObjects(allStarsList, astroEngine) {
+    while (this.stellarObjectGroup.children.length > 0) {
+      const child = this.stellarObjectGroup.children[0];
+      if (child.geometry) child.geometry.dispose();
+      this.stellarObjectGroup.remove(child);
+    }
+    while (this.orbitGroup.children.length > 0) {
+      const child = this.orbitGroup.children[0];
+      if (child.geometry) child.geometry.dispose();
+      this.orbitGroup.remove(child);
+    }
+    this.orbitGroup.visible = false;
+
+    // interactiveObjects에서 기존 primeStar 제거
+    this.interactiveObjects = this.interactiveObjects.filter(obj => !obj.userData || !obj.userData.isPrimeStar);
+
+    if (!allStarsList || allStarsList.length === 0) return;
+
+    const radius = 380;
+    const photoScale = 42.0; // 한눈에 전체 스케일이 압도되도록 적절히 콤팩트한 크기
+
+    allStarsList.forEach((starData) => {
+      const cart = astroEngine.getCartesianFromEquatorial(starData.ra, starData.dec, radius);
+      const starPos = new THREE.Vector3(cart.x, cart.y, cart.z);
+
+      const container = new THREE.Group();
+      container.position.copy(starPos);
+
+      const spriteMat = new THREE.SpriteMaterial({
+        map: this.defaultGlowTex,
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.95,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+      const stellarSprite = new THREE.Sprite(spriteMat);
+      stellarSprite.scale.set(photoScale, photoScale, 1);
+      container.add(stellarSprite);
+
+      if (starData.image) {
+        if (this.loadedTextureCache[starData.image]) {
+          spriteMat.map = this.loadedTextureCache[starData.image];
+          spriteMat.needsUpdate = true;
+        } else {
+          this.createCircularStellarTexture(
+            starData.image,
+            (circularTex) => {
+              this.loadedTextureCache[starData.image] = circularTex;
+              spriteMat.map = circularTex;
+              spriteMat.needsUpdate = true;
+            },
+            () => {
+              this.textureLoader.load(starData.image, (tex) => {
+                tex.premultiplyAlpha = true;
+                this.loadedTextureCache[starData.image] = tex;
+                spriteMat.map = tex;
+                spriteMat.needsUpdate = true;
+              });
+            }
+          );
+        }
+      }
+
+      // 작은 헤일로 링
+      const haloGeo = new THREE.RingGeometry(photoScale * 0.55, photoScale * 0.58, 32);
+      const haloMat = new THREE.MeshBasicMaterial({
+        color: 0x38bdf8,
+        transparent: true,
+        opacity: 0.70,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+        depthWrite: false
+      });
+      const haloMesh = new THREE.Mesh(haloGeo, haloMat);
+      container.add(haloMesh);
+
+      // 터치 히트박스
+      const hitGeo = new THREE.SphereGeometry(45.0, 8, 8);
+      const hitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+      const hitMesh = new THREE.Mesh(hitGeo, hitMat);
+      hitMesh.userData = { isPrimeStar: true, starData: starData };
+      container.add(hitMesh);
+      this.interactiveObjects.push(hitMesh);
+
+      this.stellarObjectGroup.add(container);
+    });
+  }
+
   bindEvents() {
     const handlePointerInteraction = (clientX, clientY, target) => {
       if (target && (target.closest('#onboarding-screen') || target.closest('#bottom-sheet') || target.closest('.hud-controls'))) {

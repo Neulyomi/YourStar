@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NASA 366일 생일 천체 데이터베이스 (James Webb Space Telescope Edition)
  * - NASA/ESA/CSA 제임스웹 우주망원경(JWST) 및 허블 최첨단 천문 데이터
  * - 칠흑 같은 검은 심우주 배경(Deep Space Dark Background)의 100% 실사 성운, 은하, 별의 요람, 원시별 제트 사진
@@ -197,6 +197,10 @@ class NASAStarDatabase {
 
     const index = (dayOfYear - 1) % this.catalog.length;
     return Object.assign({}, this.catalog[index], { isVisiblePriorityMatch: false });
+  }
+
+  getAllStars() {
+    return this.catalog;
   }
 
   getDayOfYear(month, day) {

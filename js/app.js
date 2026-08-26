@@ -243,7 +243,13 @@ class YourStarApp {
       specDistance: document.getElementById('spec-distance'),
       specSpeed: document.getElementById('spec-speed'),
       specCatalog: document.getElementById('spec-catalog'),
-      specConstellation: document.getElementById('spec-constellation')
+      specConstellation: document.getElementById('spec-constellation'),
+      btnActivateAllStars: document.getElementById('btn-activate-all-stars'),
+
+      // All Stars Transition Quote Overlay
+      allStarsQuoteOverlay: document.getElementById('all-stars-quote-overlay'),
+      allStarsQuoteText: document.getElementById('all-stars-quote-text'),
+      allStarsQuoteAuthor: document.getElementById('all-stars-quote-author')
     };
 
     // [풍부한 우주 & 별 관련 감성 명언 풀 50선: 입장할 때마다 랜덤 노출]
@@ -469,6 +475,32 @@ class YourStarApp {
         this.closeBottomSheet();
       });
     }
+
+    // [우주의 모든 별 활성화하기]
+    if (this.dom.btnActivateAllStars) {
+      const handleActivateAllStars = () => {
+        this.closeBottomSheet();
+
+        // 1. 감성 명언 풀스크린 트랜지션 노출
+        if (this.dom.allStarsQuoteOverlay) {
+          const selected = this.cosmicQuotes[Math.floor(Math.random() * this.cosmicQuotes.length)];
+          if (this.dom.allStarsQuoteText) this.dom.allStarsQuoteText.textContent = `"${selected.quote}"`;
+          if (this.dom.allStarsQuoteAuthor) this.dom.allStarsQuoteAuthor.textContent = `— ${selected.author}`;
+          this.dom.allStarsQuoteOverlay.classList.remove('hidden');
+
+          // 2. 2.4초 후 명언 오버레이 닫히고 모든 별 AR 갤러리 활성화
+          setTimeout(() => {
+            this.dom.allStarsQuoteOverlay.classList.add('hidden');
+            this.activateAllStarsGalaxyMode();
+          }, 2400);
+        } else {
+          this.activateAllStarsGalaxyMode();
+        }
+      };
+
+      this.dom.btnActivateAllStars.addEventListener('click', handleActivateAllStars);
+      this.dom.btnActivateAllStars.addEventListener('touchend', handleActivateAllStars);
+    }
   }
 
   // --- 4. 생일 별 탐색 시작 플로우 ---
@@ -590,6 +622,11 @@ class YourStarApp {
     if (this.dom.specCatalog) this.dom.specCatalog.textContent = starData.catalog;
     if (this.dom.specConstellation) this.dom.specConstellation.textContent = starData.constellation;
 
+    // [핵심: 팝업 띄워질 때 뒤의 카메라는 칠흑 같은 심우주 검은 배경으로 페이드]
+    if (this.dom.arVideo) {
+      this.dom.arVideo.classList.add('camera-dimmed');
+    }
+
     if (this.dom.bottomSheet) {
       this.dom.bottomSheet.classList.add('ar-active');
       this.dom.bottomSheet.classList.add('open');
@@ -618,6 +655,11 @@ class YourStarApp {
     if (this.dom.specCatalog) this.dom.specCatalog.textContent = `겉보기 밝기: ${starInfo.mag}등급`;
     if (this.dom.specConstellation) this.dom.specConstellation.textContent = `${constellation.name} (${constellation.symbol})`;
 
+    // [카메라 칠흑 페이드]
+    if (this.dom.arVideo) {
+      this.dom.arVideo.classList.add('camera-dimmed');
+    }
+
     if (this.dom.bottomSheet) {
       this.dom.bottomSheet.classList.add('ar-active');
       this.dom.bottomSheet.classList.add('open');
@@ -627,6 +669,37 @@ class YourStarApp {
   closeBottomSheet() {
     if (this.dom.bottomSheet) {
       this.dom.bottomSheet.classList.remove('open');
+    }
+    // [카메라 피드 부드럽게 복구]
+    if (this.dom.arVideo) {
+      this.dom.arVideo.classList.remove('camera-dimmed');
+    }
+  }
+
+  // --- 8. [우주의 모든 별 활성화 모드: All Stars Galaxy Dome Mode] ---
+  activateAllStarsGalaxyMode() {
+    // 1. 카메라 피드 완전 활성화
+    if (this.dom.arVideo) {
+      this.dom.arVideo.classList.remove('camera-dimmed');
+    }
+
+    // 2. 전체 NASA 실사 천체 데이터베이스 로드
+    const allStars = window.nasaStarDB ? window.nasaStarDB.getAllStars() : [];
+
+    // 3. 3D 천구 돔 전체에 궤도선 없이 모든 별 사진 일제히 전개
+    if (this.stellarEngine) {
+      this.stellarEngine.renderAllStellarObjects(allStars, window.astroEngine);
+    }
+
+    // 4. HUD 타이틀 및 정보 갱신
+    if (this.dom.hudTargetName) {
+      this.dom.hudTargetName.textContent = "🌌 은하수 전 천체 활성화";
+    }
+    if (this.dom.hudAstroInfo) {
+      this.dom.hudAstroInfo.textContent = `360도 천구 전체 • 366일 생일 천체 ${allStars.length}개 실시간 투영 중`;
+    }
+    if (this.dom.hudDistTag) {
+      this.dom.hudDistTag.textContent = `★ 은하수 전역 (10 ~ 2,500,000 ly)`;
     }
   }
 }
