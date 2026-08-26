@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 천문 계산 엔진 (AstroEngine)
  * - 관측자의 GPS 위치(위도, 경도) 및 현재 시간(UTC)을 기반으로 지방 항성시(LST) 계산
  * - 천체의 적도 좌표계(적경 RA, 적위 Dec)를 실시간 지평 좌표계(방위각 Azimuth, 고도 Altitude)로 변환
@@ -70,7 +70,7 @@ class AstroEngine {
     };
   }
 
-  horizontalToCartesian(altitude, azimuth, radius = 380) {
+  horizontalToCartesian(altitude, azimuth, radius = 570) {
     const altRad = altitude * this.rad;
     const azRad = azimuth * this.rad;
 
@@ -82,7 +82,7 @@ class AstroEngine {
     return { x, y, z };
   }
 
-  getCartesianFromEquatorial(ra, dec, radius = 380, date = new Date()) {
+  getCartesianFromEquatorial(ra, dec, radius = 570, date = new Date()) {
     const horiz = this.equatorialToHorizontal(ra, dec, date);
     const cart = this.horizontalToCartesian(horiz.altitude, horiz.azimuth, radius);
     return {
@@ -99,7 +99,7 @@ class AstroEngine {
    * - 북극 축을 중심으로 반경 R*cos(dec)의 완벽한 3D 원형 궤도 생성
    * - 삼각함수 경계값 꼬임(Self-intersection) 및 점프 0%
    */
-  getDiurnalOrbitPath(ra, dec, radius = 380, segments = 96) {
+  getDiurnalOrbitPath(ra, dec, radius = 570, segments = 96) {
     const points = [];
     const latRad = this.latitude * this.rad;
     const decRad = dec * this.rad;

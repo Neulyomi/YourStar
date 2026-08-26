@@ -559,7 +559,7 @@ class YourStarApp {
     }
 
     // HUD 정보 및 [태양 - 지구 - 나의 별] 거리 스케일 바 갱신
-    const cart = window.astroEngine.getCartesianFromEquatorial(star.ra, star.dec, 380);
+    const cart = window.astroEngine.getCartesianFromEquatorial(star.ra, star.dec, 570);
     this.dom.hudTargetName.textContent = star.name;
     const cardDir = window.astroEngine.getCardinalDirection(cart.azimuth);
     const altText = cart.altitude >= 0 ? `고도 +${cart.altitude}°` : `고도 ${cart.altitude}° (지평선 아래)`;
@@ -589,7 +589,7 @@ class YourStarApp {
 
   updateHUDCoordinates() {
     if (!this.currentStar) return;
-    const cart = window.astroEngine.getCartesianFromEquatorial(this.currentStar.ra, this.currentStar.dec, 380);
+    const cart = window.astroEngine.getCartesianFromEquatorial(this.currentStar.ra, this.currentStar.dec, 570);
     const cardDir = window.astroEngine.getCardinalDirection(cart.azimuth);
     const altText = cart.altitude >= 0 ? `고도 +${cart.altitude}°` : `고도 ${cart.altitude}° (지평선 아래)`;
     this.dom.hudAstroInfo.textContent = `${cardDir} ${cart.azimuth}° • ${altText} (${this.currentStar.constellation})`;
