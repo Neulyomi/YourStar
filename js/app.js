@@ -382,7 +382,7 @@ class YourStarApp {
 
   // --- 2. 3D 렌더링 & 천문 시스템 초기화 ---
   init3DSystem() {
-    this.stellarEngine = new StellarEngine(this.dom.canvasContainer, {
+    this.stellarEngine = new StellarEngine('canvas-container', {
       onStarClick: (starData) => {
         this.openBottomSheet(starData);
       },

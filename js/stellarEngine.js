@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 3D 천문 렌더링 엔진 (StellarEngine)
  * - [원거리 웅장 천구 돔 매핑: R = 380]
  * - 근거리 타원 왜곡(Perspective Distortion) 및 시각적 180도 플립 착시 완전 제거
@@ -8,7 +8,10 @@
 
 class StellarEngine {
   constructor(containerId, options = {}) {
-    this.container = document.getElementById(containerId);
+    this.container = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
+    if (!this.container) {
+      this.container = document.getElementById('canvas-container') || document.body;
+    }
     this.options = Object.assign({
       onStarClick: null,
       onConstellationClick: null,
