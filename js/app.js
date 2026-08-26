@@ -324,6 +324,19 @@ class YourStarApp {
         this.dom.dateInputSection.classList.add('revealed');
       }
     }, 2800);
+
+    // [중요: 궤도 점프 방지 사전 GPS 프리로드]
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          if (window.astroEngine) {
+            window.astroEngine.setLocation(pos.coords.latitude, pos.coords.longitude);
+          }
+        },
+        () => {},
+        { timeout: 3000 }
+      );
+    }
   }
 
   // --- 1. 상단 30% 궤도 아크 날짜 다이얼 초기화 ---

@@ -1,10 +1,9 @@
-/**
+﻿/**
  * 천문 계산 엔진 (AstroEngine)
  * - 관측자의 GPS 위치(위도, 경도) 및 현재 시간(UTC)을 기반으로 지방 항성시(LST) 계산
  * - 천체의 적도 좌표계(적경 RA, 적위 Dec)를 실시간 지평 좌표계(방위각 Azimuth, 고도 Altitude)로 변환
  * - 지평 좌표를 Three.js 3D 가상 천구(Celestial Sphere) 좌표 (X, Y, Z)로 투영
- * - 24시간 실제 일주 운동 궤적(Diurnal Celestial Orbit Track) 계산
- * - 지구 가림/가시성 상태(몇 시간 후/몇 일 후 밤하늘에 뜨는지) 정밀 분석
+ * - 24시간 실제 일주 운동 궤적(Diurnal Celestial Orbit Track) 계산 (천구 북극 축 기반 무꼬임 기하학)
  */
 
 class AstroEngine {
@@ -71,7 +70,7 @@ class AstroEngine {
     };
   }
 
-  horizontalToCartesian(altitude, azimuth, radius = 60) {
+  horizontalToCartesian(altitude, azimuth, radius = 380) {
     const altRad = altitude * this.rad;
     const azRad = azimuth * this.rad;
 
@@ -83,7 +82,7 @@ class AstroEngine {
     return { x, y, z };
   }
 
-  getCartesianFromEquatorial(ra, dec, radius = 60, date = new Date()) {
+  getCartesianFromEquatorial(ra, dec, radius = 380, date = new Date()) {
     const horiz = this.equatorialToHorizontal(ra, dec, date);
     const cart = this.horizontalToCartesian(horiz.altitude, horiz.azimuth, radius);
     return {
@@ -95,10 +94,39 @@ class AstroEngine {
   }
 
   /**
-   * 천체의 가시성 및 지구 가림 상태 상세 분석
-   * - 현재 지평선 위인지 / 지구 반대편인지
-   * - 몇 시간 후 또는 며칠 후 밤하늘에 가장 선명하게 떠오르는지 산출
+   * [천구 북극 자전축 기반 24시간 무꼬임 일주 운동 궤적]
+   * - 천구 북극 벡터: (0, R*sin(lat), -R*cos(lat))
+   * - 북극 축을 중심으로 반경 R*cos(dec)의 완벽한 3D 원형 궤도 생성
+   * - 삼각함수 경계값 꼬임(Self-intersection) 및 점프 0%
    */
+  getDiurnalOrbitPath(ra, dec, radius = 380, segments = 96) {
+    const points = [];
+    const latRad = this.latitude * this.rad;
+    const decRad = dec * this.rad;
+
+    // 천구 북극 단위 벡터 nPole in Three.js (X:0, Y:sin(Lat), Z:-cos(Lat))
+    const nPole = new THREE.Vector3(0, Math.sin(latRad), -Math.cos(latRad)).normalize();
+
+    // 궤도 평면의 기준 직교 벡터 u, v
+    const u = new THREE.Vector3(1, 0, 0); // 동쪽 축
+    const v = new THREE.Vector3().crossVectors(nPole, u).normalize(); // 남-북 틸트 축
+
+    // 궤도 원의 중심 위치 및 반지름
+    const centerDist = radius * Math.sin(decRad);
+    const ringRadius = radius * Math.cos(decRad);
+    const center = nPole.clone().multiplyScalar(centerDist);
+
+    for (let i = 0; i <= segments; i++) {
+      const angle = (i / segments) * Math.PI * 2;
+      const pt = center.clone()
+        .add(u.clone().multiplyScalar(ringRadius * Math.sin(angle)))
+        .add(v.clone().multiplyScalar(ringRadius * Math.cos(angle)));
+      points.push(pt);
+    }
+
+    return points;
+  }
+
   getObservationStatus(ra, dec, date = new Date()) {
     const horiz = this.equatorialToHorizontal(ra, dec, date);
     const isVisibleNow = horiz.altitude > 0;
@@ -113,7 +141,6 @@ class AstroEngine {
       };
     }
 
-    // 지평선 아래에 있을 때: 몇 시간 뒤에 고도 0도(지평선 위)로 떠오르는지 계산
     let hoursUntilRise = null;
     for (let h = 1; h <= 24; h++) {
       const futureDate = new Date(date.getTime() + h * 3600000);
@@ -124,8 +151,6 @@ class AstroEngine {
       }
     }
 
-    // 1년 중 가장 잘 보이는 최적 계절/일자 계산 (자정 정점)
-    // 태양의 적경(Sun RA)과 12시간 차이나는 시기
     const dayOfYear = Math.floor((date - new Date(date.getFullYear(), 0, 0)) / 1000 / 60 / 60 / 24);
     const bestDayOfYear = Math.floor(((ra + 12) % 24) * (365 / 24));
     let daysUntilPrimeSeason = (bestDayOfYear - dayOfYear + 365) % 365;
@@ -147,41 +172,6 @@ class AstroEngine {
       statusTitle: "🌐 현재 지구 반대편 위치",
       statusDesc: `현재는 지구 반대편(지평선 아래 ${horiz.altitude}°)에 있습니다. ${timeMsg}`
     };
-  }
-
-  /**
-   * 24시간 실제 일주/공전 궤적 좌표 산출
-   */
-  getDiurnalOrbitPath(ra, dec, radius = 50, segments = 96) {
-    const fullOrbitPoints = [];
-    const latRad = this.latitude * this.rad;
-    const decRad = dec * this.rad;
-
-    for (let i = 0; i <= segments; i++) {
-      const haDeg = (i / segments) * 360;
-      const haRad = haDeg * this.rad;
-
-      const sinAlt = Math.sin(decRad) * Math.sin(latRad) +
-                     Math.cos(decRad) * Math.cos(latRad) * Math.cos(haRad);
-      const altRad = Math.asin(Math.max(-1, Math.min(1, sinAlt)));
-      const cosAlt = Math.cos(altRad);
-
-      let azRad = 0;
-      if (Math.abs(cosAlt) > 1e-6) {
-        const y = -Math.cos(decRad) * Math.sin(haRad);
-        const x = Math.sin(decRad) * Math.cos(latRad) - Math.cos(decRad) * Math.sin(latRad) * Math.cos(haRad);
-        azRad = Math.atan2(y, x);
-      }
-
-      const rCosAlt = radius * Math.cos(altRad);
-      fullOrbitPoints.push(new THREE.Vector3(
-        rCosAlt * Math.sin(azRad),
-        radius * Math.sin(altRad),
-        -rCosAlt * Math.cos(azRad)
-      ));
-    }
-
-    return fullOrbitPoints;
   }
 
   getCardinalDirection(azimuth) {
