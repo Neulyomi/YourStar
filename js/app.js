@@ -419,9 +419,15 @@ class YourStarApp {
   bindDOMEvents() {
     // 생일 별 찾기 (Launch)
     if (this.dom.btnLaunch) {
-      this.dom.btnLaunch.addEventListener('click', () => {
+      const handleLaunch = (e) => {
+        if (e) {
+          try { e.stopPropagation(); } catch (err) {}
+        }
         this.startStarExperience();
-      });
+      };
+
+      this.dom.btnLaunch.addEventListener('click', handleLaunch);
+      this.dom.btnLaunch.addEventListener('touchend', handleLaunch);
     }
 
     // 나침반 수동 보정
@@ -467,43 +473,33 @@ class YourStarApp {
 
   // --- 4. 생일 별 탐색 시작 플로우 ---
   async startStarExperience() {
-    this.preferVisibleStar = this.dom.checkVisiblePriority ? this.dom.checkVisiblePriority.checked : true;
+    try {
+      this.preferVisibleStar = this.dom.checkVisiblePriority ? this.dom.checkVisiblePriority.checked : true;
 
-    // [iOS Safari 핵심] 사용자 클릭 제스처 컨텍스트 안에서 즉시 센서 권한 요청
-    if (this.arManager) {
-      this.arManager.enableDeviceSensors();
+      // [iOS Safari 핵심] 사용자 클릭 제스처 컨텍스트 안에서 즉시 센서 권한 요청
+      if (this.arManager) {
+        try { this.arManager.enableDeviceSensors(); } catch (e) {}
+      }
+
+      // 1. Web AR 카메라 시작
+      if (this.arManager) {
+        try { await this.arManager.startARSession('ar-video-feed'); } catch (e) {}
+      }
+
+      // 2. 생일 별 NASA 사진 및 4px 별자리 & 4px 공전 궤도 렌더링
+      this.updateStellarPosition();
+
+      // 3. 온보딩 모달 숨기고 AR HUD 및 가이드 바 활성화
+      if (this.dom.onboardingScreen) this.dom.onboardingScreen.classList.add('hidden');
+      if (this.dom.arHud) this.dom.arHud.classList.add('ar-active');
+      if (this.dom.arGuideBar) this.dom.arGuideBar.classList.add('ar-active');
+      if (this.dom.bottomSheet) this.dom.bottomSheet.classList.add('ar-active');
+    } catch (err) {
+      console.warn("startStarExperience fallback:", err);
+      if (this.dom.onboardingScreen) this.dom.onboardingScreen.classList.add('hidden');
+      if (this.dom.arHud) this.dom.arHud.classList.add('ar-active');
+      if (this.dom.arGuideBar) this.dom.arGuideBar.classList.add('ar-active');
     }
-
-    // 1. GPS 위치 조회
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          if (window.astroEngine) {
-            window.astroEngine.setLocation(pos.coords.latitude, pos.coords.longitude);
-          }
-          this.updateStellarPosition();
-        },
-        (err) => {
-          console.warn("GPS access skipped/failed:", err.message);
-          this.updateStellarPosition();
-        },
-        { timeout: 4000 }
-      );
-    }
-
-    // 2. Web AR 카메라 & 디바이스 센서 시작
-    if (this.arManager) {
-      await this.arManager.startARSession('ar-video-feed');
-    }
-
-    // 3. 생일 별 NASA 사진 및 4px 별자리 & 4px 공전 궤도 렌더링
-    this.updateStellarPosition();
-
-    // 4. 온보딩 모달 숨기고 AR HUD 및 가이드 바 활성화
-    if (this.dom.onboardingScreen) this.dom.onboardingScreen.classList.add('hidden');
-    if (this.dom.arHud) this.dom.arHud.classList.add('ar-active');
-    if (this.dom.arGuideBar) this.dom.arGuideBar.classList.add('ar-active');
-    if (this.dom.bottomSheet) this.dom.bottomSheet.classList.add('ar-active');
   }
 
   // --- 5. 실시간 천문 좌표 & NASA 실사 천체 & 별자리 렌더링 갱신 ---
