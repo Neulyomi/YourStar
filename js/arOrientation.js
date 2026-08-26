@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Web AR & 모바일 디바이스 방향 추적 시스템 (AROrientationManager)
  * - [SunTracker / Stellarium Web 표준: Three.js 오리지널 DeviceOrientationControls 구현]
  * - W3C Tait-Bryan Z-X-Y 디바이스 각도를 Three.js YXZ 쿼터니언으로 1:1 완벽 변환
@@ -201,9 +201,12 @@ class AROrientationManager {
 
   bindSensorEvents() {
     this.handleDeviceOrientation = this.handleDeviceOrientation.bind(this);
-    window.addEventListener('deviceorientation', this.handleDeviceOrientation, true);
+    // [중요: 이벤트 충돌 방지 배타적 등록]
+    // Android 절대 좌표 이벤트(deviceorientationabsolute)가 지원되면 그것만 청취, 아니면 표준 deviceorientation 청취
     if ('ondeviceorientationabsolute' in window) {
       window.addEventListener('deviceorientationabsolute', this.handleDeviceOrientation, true);
+    } else {
+      window.addEventListener('deviceorientation', this.handleDeviceOrientation, true);
     }
   }
 
@@ -237,13 +240,18 @@ class AROrientationManager {
     const betaDeg = event.beta || 0;
     const gammaDeg = event.gamma || 0;
 
-    // 라디안 변환
+    // 2. 실시간 화면 회전 각도 (가로/세로 모드)
+    const screenAngle = (window.screen && window.screen.orientation && typeof window.screen.orientation.angle === 'number')
+      ? window.screen.orientation.angle
+      : (window.orientation || 0);
+
+    // 3. 라디안 변환
     const alphaRad = alphaDeg * THREE.MathUtils.DEG2RAD + this.alphaOffset;
     const betaRad = betaDeg * THREE.MathUtils.DEG2RAD;
     const gammaRad = gammaDeg * THREE.MathUtils.DEG2RAD;
-    const orientRad = this.screenOrientation * THREE.MathUtils.DEG2RAD;
+    const orientRad = screenAngle * THREE.MathUtils.DEG2RAD;
 
-    // 표준 변환 실행
+    // 4. 표준 쿼터니언 변환 실행
     this.setObjectQuaternion(this.targetQuaternion, alphaRad, betaRad, gammaRad, orientRad);
 
     if (this.options.onOrientationUpdate) {
